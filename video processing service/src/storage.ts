@@ -3,7 +3,6 @@
 import { Storage } from '@google-cloud/storage';
 import fs from 'fs';
 import ffmpeg from 'fluent-ffmpeg';
-import { raw } from 'express';
 
 const storage = new Storage();
 
@@ -17,19 +16,27 @@ const localProcessedVideoPath = "./processed-videos";
     Creating local directories for videos downloaded from GCS and directory for processed video
   */
 
-export function setupDirectories() {
+function ensureDirectoryExistence(dirPath: string){
+    if (!fs.existsSync(dirPath)) {
+        fs.mkdirSync(dirPath, { recursive: true });
+        console.log(`Directory created at ${dirPath}`);
+    }
+}
 
+export function setupDirectories() {
+    ensureDirectoryExistence(localRawVideoPath);
+    ensureDirectoryExistence(localProcessedVideoPath);
 }
 
 export function convertVideo(rawVideoName: string, processedVideoName: string){
     return new Promise<void>((resolve, reject) => {
         ffmpeg(`${localRawVideoPath}/${rawVideoName}`)
         .outputOptions("-vf", "scale=1280:720") //make sure this works
-        .on("end", () => {
+        .on("end", function () {
             console.log(`Video Proceesing Finished Successfully`)
             resolve();
         })
-        .on("error", (err) => {
+        .on("error", function (err: any) {
             console.log(`An error occured: ${err.message}`);
             reject(err);
         })
@@ -48,15 +55,24 @@ export async function downloadRawVideo(fileName: string){
     )
 }
 
-export async function uploadPorcessedVideo(fileName: string){
+export async function uploadProcessedVideo(fileName: string){
     const bucket = storage.bucket(processedVideoBucketName)
-    await bucket.upload(`${localProcessedVideoPath}/${fileName}`, {
-        destination: fileName
+    await storage.bucket(processedVideoBucketName).upload(`${localProcessedVideoPath}/${fileName}`, {
+        destination: fileName,
     });
     console.log(
         `${localProcessedVideoPath}/${fileName} uploaded to gs://${processedVideoBucketName}/${fileName}`
     )
     await bucket.file(fileName).makePublic();
+}
+
+
+export function deleteRawVideo(fileName: string){
+    return deleteFile(`${localRawVideoPath}/${fileName}`);
+}
+
+export function deleteProcessedVideo(fileName: string){
+    return deleteFile(`${localProcessedVideoPath}/${fileName}`);
 }
 
 function deleteFile(filePath: string): Promise<void> {
@@ -76,11 +92,4 @@ function deleteFile(filePath: string): Promise<void> {
             resolve();
         }
     })
-}
-
-function ensureDirectoryExistence(dirPath: string){
-    if (!fs.existsSync(dirPath)) {
-        fs.mkdirSync(dirPath, { recursive: true });
-        console.log(`Directory created at ${dirPath}`);
-    }
 }

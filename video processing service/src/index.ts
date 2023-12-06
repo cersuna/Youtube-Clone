@@ -1,5 +1,5 @@
 import express from "express";
-import { convertVideo, deleteProcessedVideo, deleteRawVideo, downloadRawVideo, setupDirectories, uploadPorcessedVideo } from "./storage";
+import { convertVideo, deleteProcessedVideo, deleteRawVideo, downloadRawVideo, setupDirectories, uploadProcessedVideo} from "./storage";
 
 setupDirectories();
 
@@ -21,14 +21,14 @@ app.post("/process-video", async (req, res) => {
     }
 
     const inputFileName = data.name;
-    const outputFileName = `.processed-${inputFileName}`;
+    const outputFileName = `processed-${inputFileName}`;
 
     // Donwloading raw video from the GCS
     await downloadRawVideo(inputFileName);
 
     // Conversion of raw video into 1280x720
     try {
-        convertVideo
+        await convertVideo(inputFileName, outputFileName)
     }   catch(err){
             Promise.all([
                 deleteRawVideo(inputFileName),
@@ -38,7 +38,7 @@ app.post("/process-video", async (req, res) => {
         }
 
     // Uploading processed video into the GCS
-    await uploadPorcessedVideo(outputFileName);
+    await uploadProcessedVideo(outputFileName);
 
     await Promise.all([
         deleteRawVideo(inputFileName),
@@ -47,7 +47,7 @@ app.post("/process-video", async (req, res) => {
     return res.status(200).send("PROCESS SUCCESSFUL");
 });
 
-const port = process.env.PORT || 3000;
+const port = process.env.PORT || 8080;
 app.listen(port, () =>{
     console.log(`video processing services listening at http://localhost:${port}`)
 })
