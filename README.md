@@ -1,4 +1,4 @@
 # Youtube-Clone
 Built in order to familiarize with typescript.
 
-CURRENTLY BROKEN
+buckets no longer functional
